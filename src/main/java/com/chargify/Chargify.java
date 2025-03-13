@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface Chargify
 {
@@ -71,6 +72,8 @@ public interface Chargify
   Mono<Subscription> purgeSubscription( Subscription subscription );
 
   Flux<Subscription> findSubscriptionsByState( String state, int pageNumber, int pageSize );
+
+  Flux<Subscription> findSubscriptionsByStateAndMetadata( String state, Map<String, String> metadata, int pageNumber, int pageSize );
 
   Mono<Subscription> cancelSubscriptionById( String id );
 

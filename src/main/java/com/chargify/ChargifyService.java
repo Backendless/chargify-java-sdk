@@ -366,6 +366,17 @@ public final class ChargifyService implements Chargify
   }
 
   @Override
+  public Flux<Subscription> findSubscriptionsByStateAndMetadata( String state, Map<String, String> metadata, int pageNumber, int pageSize )
+  {
+    StringBuilder fields = new StringBuilder();
+    metadata.forEach( ( key, value ) -> fields.append( "&metadata[" ).append( key ).append( "]=" ).append( value ) );
+    return ChargifyResponseErrorHandler.handleError(
+            client.get().uri( "/subscriptions.json?page=" + pageNumber + "&" +
+                                      "per_page=" + pageSize + "&state=" + state + fields ).retrieve() )
+            .bodyToFlux( SubscriptionWrapper.class ).map( SubscriptionWrapper::getSubscription );
+  }
+
+  @Override
   public Mono<Subscription> cancelSubscriptionById( String id )
   {
     return ChargifyResponseErrorHandler.handleError(

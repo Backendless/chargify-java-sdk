@@ -4,10 +4,10 @@ import com.chargify.model.CreateSubscription;
 import com.chargify.model.Customer;
 import com.chargify.model.Migration;
 import com.chargify.model.PricePointIntervalUnit;
+import com.chargify.model.Subscription;
 import com.chargify.model.SubscriptionProductUpdate;
 import com.chargify.model.product.Product;
 import com.chargify.model.product.ProductFamily;
-import com.chargify.model.Subscription;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -32,36 +32,35 @@ public class SubscriptionsTest extends ChargifyTest
   @BeforeClass
   public static void setup()
   {
-    productFamilyUnderTest = chargify.createProductFamily( new ProductFamily( randomName() ) ).block();
+    productFamilyUnderTest = chargify.createProductFamily( new ProductFamily( randomName() ) );
 
     final Product product = new Product( randomName(), 0, 1, PricePointIntervalUnit.month );
     product.setRequestCreditCard( false );
     product.setRequireCreditCard( false );
-    productUnderTest = chargify.createProduct( productFamilyUnderTest.getId(), product ).block();
+    productUnderTest = chargify.createProduct( productFamilyUnderTest.getId(), product );
 
     product.setHandle( randomName() );
-    productForDelayedChange = chargify.createProduct( productFamilyUnderTest.getId(), product ).block();
+    productForDelayedChange = chargify.createProduct( productFamilyUnderTest.getId(), product );
 
     product.setHandle( randomName() );
-    productForImmediateChange = chargify.createProduct( productFamilyUnderTest.getId(), product ).block();
+    productForImmediateChange = chargify.createProduct( productFamilyUnderTest.getId(), product );
 
     product.setHandle( randomName() );
-    productForMigration = chargify.createProduct( productFamilyUnderTest.getId(), product ).block();
+    productForMigration = chargify.createProduct( productFamilyUnderTest.getId(), product );
 
-    customerUnderTest = chargify.createCustomer( new Customer( "Andy", "Panda",
-                                                               "andypanda@example.com" ) ).block();
+    customerUnderTest = chargify.createCustomer( new Customer( "Andy", "Panda", "andypanda@example.com" ) );
 
     final CreateSubscription subscription = new CreateSubscription();
     subscription.setProductId( productUnderTest.getId() );
     subscription.setCustomerId( customerUnderTest.getId() );
-    subscriptionUnderTest = chargify.createSubscription( subscription ).block();
+    subscriptionUnderTest = chargify.createSubscription( subscription );
   }
 
   @AfterClass
   public static void cleanup()
   {
-    chargify.cancelSubscriptionById( subscriptionUnderTest.getId() ).block();
-    chargify.archiveProductById( productUnderTest.getId() ).block();
+    chargify.cancelSubscriptionById( subscriptionUnderTest.getId() );
+    chargify.archiveProductById( productUnderTest.getId() );
     // cannot be archived - subscription change pending
 //    chargify.archiveProductById( productForDelayedChange.getId() );
     // cannot be archived - product still exists
@@ -73,28 +72,28 @@ public class SubscriptionsTest extends ChargifyTest
   @Test
   public void subscriptionShouldBeFoundByValidId()
   {
-    final Subscription subscription = chargify.findSubscriptionById( subscriptionUnderTest.getId() ).block();
+    final Subscription subscription = chargify.findSubscriptionById( subscriptionUnderTest.getId() );
     assertNotNull( "Subscription not found", subscription );
   }
 
   @Test
   public void subscriptionShouldNotBeFoundByInvalidId()
   {
-    final Subscription subscription = chargify.findSubscriptionById( "invalid" ).block();
+    final Subscription subscription = chargify.findSubscriptionById( "invalid" );
     assertNull( "Subscription should not have been found", subscription );
   }
 
   @Test
   public void customerShouldHaveAtLeastOneSubscription()
   {
-    final List<Subscription> subscriptions = chargify.findSubscriptionsByCustomerId( customerUnderTest.getId() ).collectList().block();
+    final List<Subscription> subscriptions = chargify.findSubscriptionsByCustomerId( customerUnderTest.getId() );
     assertFalse( "No subscriptions found for customer", subscriptions.isEmpty() );
   }
 
   @Test
   public void findAllShouldReturnAtLeastOne()
   {
-    final List<Subscription> subscriptions = chargify.findAllSubscriptions().collectList().block();
+    final List<Subscription> subscriptions = chargify.findAllSubscriptions();
     assertFalse( "No subscriptions found", subscriptions.isEmpty() );
   }
 
@@ -105,7 +104,7 @@ public class SubscriptionsTest extends ChargifyTest
         subscriptionUnderTest.getId(), SubscriptionProductUpdate.builder()
             .productHandle( productForImmediateChange.getHandle() )
             .changeDelayed( false ).build()
-    ).block();
+    );
     assertNull( "Product change scheduled", subscription.getNextProductId() );
     assertEquals( "Product should have been changed", productForImmediateChange.getId(), subscription.getProduct().getId() );
   }
@@ -114,7 +113,7 @@ public class SubscriptionsTest extends ChargifyTest
   public void migrationShouldChangeProduct()
   {
     final Subscription subscription = chargify.migrateSubscription(
-        subscriptionUnderTest.getId(), Migration.builder().productHandle( productForMigration.getHandle() ).build() ).block();
+        subscriptionUnderTest.getId(), Migration.builder().productHandle( productForMigration.getHandle() ).build() );
     assertNull( "Product change scheduled", subscription.getNextProductId() );
     assertEquals( "Product has not been migrated", productForMigration.getHandle(), subscription.getProduct().getHandle() );
   }

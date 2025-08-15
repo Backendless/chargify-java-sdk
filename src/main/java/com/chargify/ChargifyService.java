@@ -20,6 +20,7 @@ import com.chargify.model.ReferralCode;
 import com.chargify.model.RenewalPreview;
 import com.chargify.model.Subscription;
 import com.chargify.model.SubscriptionCharge;
+import com.chargify.model.SubscriptionChargePayload;
 import com.chargify.model.SubscriptionChargeResult;
 import com.chargify.model.SubscriptionComponent;
 import com.chargify.model.SubscriptionMetadata;
@@ -301,7 +302,7 @@ public final class ChargifyService implements Chargify
   public SubscriptionChargeResult createSubscriptionCharge( String subscriptionId, SubscriptionCharge subscriptionCharge )
   {
     return httpClient.postForObject( "/subscriptions/" + subscriptionId + "/charges.json",
-                                     Map.of( "charge", subscriptionCharge ), SubscriptionChargeWrapper.class )
+                                     Map.of( "charge", SubscriptionChargePayload.from( subscriptionCharge ) ), SubscriptionChargeWrapper.class )
         .getSubscriptionChargeResult();
   }
 

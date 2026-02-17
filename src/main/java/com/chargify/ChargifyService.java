@@ -65,11 +65,11 @@ import com.chargify.model.wrappers.TransactionWrapper;
 import com.chargify.model.wrappers.UpdateSubscriptionWrapper;
 import com.chargify.model.wrappers.UsageWrapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.json.AbstractJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
@@ -94,17 +94,11 @@ public final class ChargifyService implements Chargify
   public ChargifyService( final String domain, final String apiKey, int connectTimeoutInMillis,
                           int readTimeoutInMillis )
   {
-    this( "https://" + domain + ".chargify.com", apiKey,
-          new RestTemplateBuilder()
-              .uriTemplateHandler( new DefaultUriBuilderFactory( "https://" + domain + ".chargify.com" ) )
-              .basicAuthentication( apiKey, "x" )
-              .connectTimeout( Duration.ofMillis( connectTimeoutInMillis ) )
-              .readTimeout( Duration.ofMillis( readTimeoutInMillis ) )
-              .errorHandler( new ChargifyResponseErrorHandler() )
-              .build() );
+    this( createRestTemplate( "https://" + domain + ".chargify.com", apiKey,
+                              connectTimeoutInMillis, readTimeoutInMillis ) );
   }
 
-  private ChargifyService( String chargifyApiUrl, String apiKey, RestTemplate httpClient )
+  private ChargifyService( RestTemplate httpClient )
   {
     this.httpClient = httpClient;
 
@@ -113,9 +107,27 @@ public final class ChargifyService implements Chargify
         .map( AbstractJackson2HttpMessageConverter.class::cast )
         .map( AbstractJackson2HttpMessageConverter::getObjectMapper )
         .forEach( mapper -> mapper.disable( SerializationFeature.WRITE_DATES_AS_TIMESTAMPS ) );
+  }
 
-    String plainCreds = apiKey + ":x";
-    String base64Creds = Base64.getEncoder().encodeToString( plainCreds.getBytes() );
+  private static RestTemplate createRestTemplate( String baseUrl, String apiKey,
+                                                  int connectTimeoutInMillis, int readTimeoutInMillis )
+  {
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout( Duration.ofMillis( connectTimeoutInMillis ) );
+    requestFactory.setReadTimeout( Duration.ofMillis( readTimeoutInMillis ) );
+
+    RestTemplate restTemplate = new RestTemplate( requestFactory );
+    restTemplate.setUriTemplateHandler( new DefaultUriBuilderFactory( baseUrl ) );
+    restTemplate.setErrorHandler( new ChargifyResponseErrorHandler() );
+
+    String base64Creds = Base64.getEncoder()
+        .encodeToString( ( apiKey + ":x" ).getBytes( StandardCharsets.UTF_8 ) );
+    restTemplate.getInterceptors().add( ( request, body, execution ) -> {
+      request.getHeaders().add( "Authorization", "Basic " + base64Creds );
+      return execution.execute( request, body );
+    } );
+
+    return restTemplate;
   }
 
   @Override
